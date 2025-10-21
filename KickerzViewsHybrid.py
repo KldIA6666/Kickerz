@@ -43,7 +43,7 @@ COMMON_VIEWPORTS = [
 # --- Resilience & Looping ---
 MAX_RETRIES = 3
 NAVIGATION_TIMEOUT = 90000
-LOOP_DELAY_SECONDS = (30, 90)
+LOOP_DELAY_SECONDS = (30, 60)
 
 # --- GLOBAL STATE ---
 state_lock = threading.Lock(); thread_states = {}; worker_types = {}
