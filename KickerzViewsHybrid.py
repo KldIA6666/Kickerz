@@ -1,9 +1,9 @@
 # ===================================================================================
 # Project: KickerzViews
-# Version: 16.0 (Uncapped Hybrid - v8.1 Core)
+# Version: 17.1 (Corrected Event Loop & Shutdown)
 # Description: The definitive script built on the user-preferred pure async, uncapped
-#              architecture. Integrates all advanced features including hybrid mode,
-#              URL rotation, and optional human-like actions.
+#              architecture. This version is optimized for high-concurrency server
+#              environments, focusing on efficient resource management.
 #
 # Disclaimer: This script is intended for educational and research purposes only.
 # The developer is not responsible for any misuse of this software.
@@ -53,7 +53,7 @@ console = Console()
 # --- Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', filename='kickerzviews.log', filemode='w')
 
-# --- BROWSER MANAGER ---
+# --- BROWSER MANAGER (PERFORMANCE-TUNED) ---
 class BrowserManager:
     """Manages ONE single, shared browser instance, with or without a proxy."""
     def __init__(self, playwright_instance, proxy_config=None):
@@ -62,17 +62,23 @@ class BrowserManager:
         self._proxy_config = proxy_config
 
     async def launch(self):
-        self.browser = await self._playwright.chromium.launch(headless=True, proxy=self._proxy_config)
+        """Launches the shared browser instance. This should be called only ONCE."""
+        if not self.browser:
+            self.browser = await self._playwright.chromium.launch(headless=True, proxy=self._proxy_config)
 
     async def new_context(self):
-        """Creates a brand new, 100% isolated browser context with a random viewport."""
+        """Creates a brand new, 100% isolated browser context from the shared browser."""
+        if not self.browser:
+            raise Exception("Browser has not been launched. Call launch() first.")
         viewport = random.choice(COMMON_VIEWPORTS)
         return await self.browser.new_context(
             ignore_https_errors=True, user_agent=USER_AGENT, viewport=viewport
         )
 
     async def close(self):
-        if self.browser: await self.browser.close()
+        """Closes the shared browser instance."""
+        if self.browser and self.browser.is_connected():
+            await self.browser.close()
 
 # --- DYNAMIC LIVE UI THREAD ---
 def rich_dashboard_thread(stop_event: threading.Event, run_mode: str, total_workers: int, proxy_workers: int):
@@ -114,11 +120,12 @@ def rich_dashboard_thread(stop_event: threading.Event, run_mode: str, total_work
         main_grid = Table.grid(expand=True, padding=1)
         main_grid.add_row(config_panel); main_grid.add_row(performance_panel)
         main_grid.add_row(summary_panel); main_grid.add_row(footer)
-        return Panel(main_grid, title="[bold red]🚀 KickerzViews [UNCAPPED MODE][/]")
+        return Panel(main_grid, title="[bold red]🚀 KickerzViews v17.1 [PERFORMANCE MODE][/]")
 
     with Live(generate_layout(), console=console, screen=True, auto_refresh=False) as live:
         while not stop_event.is_set():
-            live.update(generate_layout(), refresh=True); time.sleep(1)
+            live.update(generate_layout(), refresh=True)
+            time.sleep(1)
 
 # --- WORKER LOGIC ---
 def update_thread_state(worker_id: int, status: str):
@@ -128,43 +135,59 @@ async def perform_human_like_actions(page):
     """Simulates realistic user interactions on the page."""
     try:
         for _ in range(random.randint(2, 4)):
+            if page.is_closed(): return
             await page.mouse.move(random.randint(100, page.viewport_size['width'] - 100), random.randint(100, page.viewport_size['height'] - 100), steps=random.randint(5, 10))
             await asyncio.sleep(random.uniform(0.2, 0.5))
         for _ in range(random.randint(1, 3)):
+            if page.is_closed(): return
             await page.mouse.wheel(0, random.randint(200, 1000)); await asyncio.sleep(random.uniform(0.5, 1.5))
     except Exception as e:
         logging.warning(f"Worker could not perform human-like actions: {e}")
 
 async def visit_website_headless(manager: BrowserManager, target_url: str, visit_duration: int, worker_id: int, use_advanced_actions: bool):
-    """Performs a single, completely isolated visit."""
+    """Performs a single, completely isolated visit using a new browser context."""
     global successful_visits, failed_visits
     context = None
     try:
-        context = await manager.new_context(); page = await context.new_page()
+        context = await manager.new_context()
+        page = await context.new_page()
         await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         await page.route(re.compile(r"\.(jpg|jpeg|png|gif|css|woff|woff2)$"), lambda r: r.abort())
-        for _ in range(MAX_RETRIES):
+        
+        for attempt in range(MAX_RETRIES):
             try:
                 update_thread_state(worker_id, "Navigating")
                 await page.goto(target_url, wait_until="domcontentloaded", timeout=NAVIGATION_TIMEOUT)
                 update_thread_state(worker_id, "On Page")
+                
                 if use_advanced_actions:
                     await perform_human_like_actions(page)
+                
                 await asyncio.sleep(visit_duration)
+                
                 with state_lock: successful_visits += 1
                 logging.info(f"Worker-{worker_id} successfully viewed {target_url}")
-                update_thread_state(worker_id, None)
                 return
-            except Exception:
+            except Exception as e:
+                logging.warning(f"Worker-{worker_id} attempt {attempt + 1}/{MAX_RETRIES} failed for {target_url}: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    await asyncio.sleep(5)
                 continue
+        
         with state_lock: failed_visits += 1
         update_thread_state(worker_id, "Failed")
         logging.error(f"Worker-{worker_id} failed to view {target_url} after {MAX_RETRIES} retries.")
+    except Exception as e:
+        with state_lock: failed_visits += 1
+        update_thread_state(worker_id, "Failed")
+        logging.critical(f"A critical, non-retryable error occurred in Worker-{worker_id}: {e}")
     finally:
-        if context: await context.close()
+        if context:
+            await context.close()
+        update_thread_state(worker_id, None)
 
 async def worker_loop(manager: BrowserManager, url_list: list, visit_duration: int, worker_id: int, use_advanced_actions: bool):
-    """The main asynchronous loop for each worker task, based on the v8.1 engine."""
+    """The main asynchronous loop for each worker task."""
     while True:
         try:
             target_url = random.choice(url_list)
@@ -173,6 +196,7 @@ async def worker_loop(manager: BrowserManager, url_list: list, visit_duration: i
             update_thread_state(worker_id, "Waiting")
             await asyncio.sleep(delay)
         except asyncio.CancelledError:
+            logging.info(f"Worker-{worker_id} was cancelled and is shutting down.")
             break
         except Exception as e:
             update_thread_state(worker_id, "Failed")
@@ -183,61 +207,82 @@ async def check_proxy(proxy_config):
     console.print("\n[yellow]Performing proxy health check...[/]")
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, proxy=proxy_config); page = await browser.new_page(ignore_https_errors=True)
-            await page.goto("https://api.ipify.org", timeout=20000); await browser.close()
+            browser = await p.chromium.launch(headless=True, proxy=proxy_config)
+            page = await browser.new_page(ignore_https_errors=True)
+            await page.goto("https://api.ipify.org", timeout=20000)
+            await browser.close()
         console.print("[bold green]✅ Proxy health check PASSED.[/]"); return True
     except Exception:
         console.print("[bold red]❌ Proxy health check FAILED.[/]"); return False
 
-# --- MAIN ASYNC EXECUTION BLOCK (v8.1 STYLE) ---
+# --- MAIN ASYNC EXECUTION BLOCK (PERFORMANCE-TUNED) ---
 async def main(proxy_workers: int, direct_workers: int, urls: list, duration: int, run_mode: str, advanced_actions: bool):
-    """Initializes managers and runs ALL workers as concurrent asyncio tasks."""
+    """Initializes managers, handles graceful shutdown, and runs all workers."""
     proxy_config = {"server": PROXY_SERVER, "username": PROXY_TOKEN}
     total_workers = proxy_workers + direct_workers
-    
+    tasks = []
+
     stop_ui_event = threading.Event()
     ui_thread = threading.Thread(target=rich_dashboard_thread, args=(stop_ui_event, run_mode, total_workers, proxy_workers), daemon=True)
     ui_thread.start()
     
     async with async_playwright() as p:
-        proxy_manager = None; direct_manager = None
+        proxy_manager = None
+        direct_manager = None
         try:
             if proxy_workers > 0:
-                proxy_manager = BrowserManager(p, proxy_config); await proxy_manager.launch()
+                console.print("[cyan]Launching shared proxy browser instance...[/]")
+                proxy_manager = BrowserManager(p, proxy_config)
+                await proxy_manager.launch()
             if direct_workers > 0:
-                direct_manager = BrowserManager(p); await direct_manager.launch()
+                console.print("[cyan]Launching shared direct browser instance...[/]")
+                direct_manager = BrowserManager(p)
+                await direct_manager.launch()
 
-            tasks = []
-            # Create all tasks and add them to the list
             for i in range(1, proxy_workers + 1):
-                worker_types[i] = 'Proxy'
                 tasks.append(asyncio.create_task(worker_loop(proxy_manager, urls, duration, i, advanced_actions)))
             for i in range(proxy_workers + 1, total_workers + 1):
-                worker_types[i] = 'Direct'
                 tasks.append(asyncio.create_task(worker_loop(direct_manager, urls, duration, i, advanced_actions)))
             
-            # Unleash all tasks at once
+            console.print(f"[bold green]🚀 Unleashing {total_workers} workers. Press Ctrl+C to stop gracefully.[/]")
             await asyncio.gather(*tasks)
 
         except asyncio.CancelledError:
-            console.print("\n[yellow]Cancellation signal received...[/]")
+            pass # This is expected during shutdown
         finally:
+            console.print("\n[bold yellow]--- GRACEFUL SHUTDOWN INITIATED ---[/]")
+            if not all(task.done() for task in tasks):
+                console.print(f"[yellow]Cancelling {len(tasks)} running worker tasks...[/]")
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                console.print("[green]All worker tasks have been cancelled.[/]")
+
             console.print("[yellow]Closing browser managers...[/]")
             if proxy_manager: await proxy_manager.close()
             if direct_manager: await direct_manager.close()
+            
             stop_ui_event.set()
+            ui_thread.join()
 
 if __name__ == "__main__":
+    # --- IMPORTANT: SERVER TUNING FOR HIGH CONCURRENCY ---
+    # On Linux, run `ulimit -n 65536` in your terminal before starting the script
+    # to prevent "too many open files" errors with many workers.
+    # For a permanent fix, edit /etc/security/limits.conf.
+    # --------------------------------------------------------
+    
     try:
-        console.print("[bold green]--- KickerzViews Configuration ---[/]")
+        console.print("[bold green]--- KickerzViews v17.1 Configuration ---[/]")
         console.print("[bold red]WARNING: Running in UNLIMITED CONCURRENCY mode.[/]")
         
         url_input = console.input("[bold]Enter URL or comma-separated URLs: [/]").strip()
+        if not url_input: raise ValueError("URL input cannot be empty.")
         urls_to_visit = [url.strip() for url in url_input.split(',')]
         duration_input = int(console.input("[bold]Enter visit duration (seconds): [/]").strip())
 
         adv_choice = console.input("\n[bold]Enable advanced human-like actions? (y/n): [/]").strip().lower()
-        advanced_actions_enabled = True if adv_choice == 'y' else False
+        advanced_actions_enabled = adv_choice == 'y'
 
         console.print("\n[bold]Select Mode:[/]\n  [cyan]1.[/] Proxies\n  [cyan]2.[/] Direct\n  [cyan]3.[/] Hybrid")
         mode_choice = console.input("> ").strip()
@@ -253,15 +298,23 @@ if __name__ == "__main__":
             direct_w = int(console.input("Number of [blue]direct[/] workers: ").strip())
         else: raise ValueError("Invalid mode selected.")
 
-        if proxy_w > 0 and not asyncio.run(check_proxy({"server": PROXY_SERVER, "username": PROXY_TOKEN})):
-            exit(1)
+        if proxy_w > 0:
+            # We need an event loop to run the async check_proxy function.
+            # asyncio.run() is perfect for this one-off async call.
+            if not asyncio.run(check_proxy({"server": PROXY_SERVER, "username": PROXY_TOKEN})):
+                exit(1)
         
         logging.info(f"Start: Mode={run_mode_str}, Proxies={proxy_w}, Direct={direct_w}, Adv={advanced_actions_enabled}, URLs={urls_to_visit}")
         console.print("\n[bold green]Configuration complete. Starting KickerzViews...[/]"); time.sleep(2)
+        
+        # asyncio.run() is the standard, correct way to start an asyncio application.
+        # It handles the loop and graceful shutdown on KeyboardInterrupt automatically.
         asyncio.run(main(proxy_w, direct_w, urls_to_visit, duration_input, run_mode_str, advanced_actions_enabled))
 
-    except (ValueError, TypeError): console.print(f"\n[red]Error: Invalid input.[/]")
-    except KeyboardInterrupt: console.print("\n\n[yellow]Keyboard interrupt. Shutting down...[/]")
+    except (ValueError, TypeError) as e: 
+        console.print(f"\n[red]Error: Invalid input. {e}[/]")
+    except KeyboardInterrupt:
+        console.print("\n\n[yellow]Program interrupted by user. Shutting down.[/yellow]")
     finally:
         logging.info("KickerzViews session terminated.")
-        console.print("[bold green]KickerzViews has terminated.", style="green")
+        console.print("[bold green]KickerzViews has terminated.[/bold green]")
