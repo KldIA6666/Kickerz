@@ -1,3 +1,4 @@
+![Project Screenshot](./assets/readmeshi.png)
 # Kickerz Toolkit (A.I Generated README xd) 🦎
 
 A suite of high-performance, asynchronous tools designed for educational and research purposes related to the Kick streaming platform. This toolkit provides utilities for generating live and VOD views, as well as creating accounts.
