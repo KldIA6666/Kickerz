@@ -43,8 +43,7 @@ All donations go directly towards funding the resources needed for testing, ice-
 ---
 
 ## Watch The Demo
-
-*(A YouTube video demonstrating the setup and features of KickerzOyaled is coming soon!)*
+[![Watch the video](https://img.youtube.com/vi/R_NHePAe9Dc/maxresdefault.jpg)](https://youtu.be/R_NHePAe9Dc)
 
 ---
 
