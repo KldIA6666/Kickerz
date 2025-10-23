@@ -22,7 +22,7 @@ All donations go directly towards funding the resources needed for testing, and 
 ---
 
 > [!WARNING]
-> **Disclaimer**: This script is intended for educational and research purposes only. The developer is not responsible for any misuse of this software. By using this script, you agree to use it legally and ethically.
+> **Disclaimer**: The scripts are intended for educational and research purposes only. The developer (me) is not responsible for any misuse of this software. By using this script, you agree to use it legally and ethically.
 
 ## Featured Tool: KickerzOyaled (AI Chat Bot)
 
