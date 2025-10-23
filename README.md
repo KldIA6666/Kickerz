@@ -17,7 +17,7 @@ All donations go directly towards funding the resources needed for testing, and 
 
 **Monero (XMR) Address:**
 ```
-4362JdtPhfAZbpu95Z2EeJ2fNVsRaxJ8z7sYCsN724z1iLCKMymyDiTTqeqf4p5qnzYE7TifzXkusSiWFr7qykDU7Bv55as
+8B7xc18gsyzF2618eSWVMqh38dDDByAkhiw7ib267AfG8jUJGGDeD3f3VT4cxfbb2RJALU2pgWkw8DSsau2UedqAGz7WqHs
 ```
 ---
 
