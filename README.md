@@ -1,4 +1,4 @@
-![Project Screenshot](./assets/readmeshi.png)
+![Project Oyaled Screenshot](./assets/readmeshi.png)
 
 # KickerzOyaled & Toolkit 🦎
 
