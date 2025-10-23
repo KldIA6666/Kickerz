@@ -1,7 +1,5 @@
 ## Watch The Demo
 [![Watch the video](https://img.youtube.com/vi/R_NHePAe9Dc/maxresdefault.jpg)](https://youtu.be/R_NHePAe9Dc)
----
-
 # KickerzOyaled & Toolkit 🦎
 
 A suite of high-performance, asynchronous tools designed for educational and research purposes related to the Kick streaming platform. This repository is home to **KickerzOyaled**, an interactive, AI-powered chat bot, alongside utilities for generating live/VOD views and creating accounts.
