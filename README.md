@@ -13,7 +13,7 @@ A suite of high-performance, asynchronous tools designed for educational and res
 
 This project is developed and maintained in my free time. If you find these tools useful and wish to support their continued development, please consider donating.
 
-All donations go directly towards funding the resources needed for testing, ice-cream and research, such as dedicated servers and residential proxy plans. Your support helps me go crazy with new ideas and push the boundaries of what's possible.
+All donations go directly towards funding the resources needed for testing, and research, such as dedicated servers, ice-cream and residential proxy plans. Your support helps me go crazy with new ideas and push the boundaries of what's possible.
 
 **Monero (XMR) Address:**
 ```
