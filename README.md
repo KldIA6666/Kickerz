@@ -1,4 +1,6 @@
-![Project Oyaled Screenshot](./assets/readmeshi.png)
+## Watch The Demo
+[![Watch the video](https://img.youtube.com/vi/R_NHePAe9Dc/maxresdefault.jpg)](https://youtu.be/R_NHePAe9Dc)
+---
 
 # KickerzOyaled & Toolkit 🦎
 
@@ -39,11 +41,6 @@ All donations go directly towards funding the resources needed for testing, ice-
 -   **🔄 Fully Automated Mode**: Pre-select a playlist of your favorite modes (including AI modes) and let the bot run them continuously and randomly.
 -   **🛠️ Channel Utilities**: Easily follow, unfollow, or run chat commands like `!uptime`.
 -   **🔒 Setup Helper**: If you haven't hardcoded your credentials, the bot will safely prompt you for them at runtime.
-
----
-
-## Watch The Demo
-[![Watch the video](https://img.youtube.com/vi/R_NHePAe9Dc/maxresdefault.jpg)](https://youtu.be/R_NHePAe9Dc)
 
 ---
 
